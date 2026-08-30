@@ -76,7 +76,9 @@
                      "dt-config.lsp"
                      "src\\dt-fixture.lsp"
                      "src\\dt-wiretree.lsp"
-                     "src\\dt-label.lsp")
+                     "src\\dt-label.lsp"
+                     "src\\dt-sheet.lsp"
+                     "src\\dt-load-takeoff.lsp")
         (if (not (dt:load-file root rel)) (setq ok nil)))
 
       ;; The block registry as measured by DT-SETPORT. Loaded after config so
@@ -95,7 +97,10 @@
           (princ "\n  DT-SETGROUP (SG)           tag picked blocks as one count group")
           (princ "\n  DT-RENUMBER (RNB)          renumber every group now")
           (princ "\n  DT-COUNTS                  how many of each group in the drawing")
-          (princ "\n  DT-AUTOLABELON / DT-AUTOLABELOFF   live renumbering"))
+          (princ "\n  DT-SHEETS   (SHT)          number the layout tabs in tab order")
+          (princ "\n  DT-SETCIRCUIT (SC)         tag selected devices with a circuit")
+          (princ "\n  DT-RENCIRCUIT              rename circuits, one or from a CSV")
+          (princ "\n  DT-LOAD     (LD)           load per circuit, to CSV"))
         (princ "\nDrafting tools: loaded with errors -- see above."))
       ok))
 )

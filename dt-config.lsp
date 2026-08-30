@@ -92,12 +92,41 @@
       ;; away and cannot be recovered. Run DT-SETPORT on this symbol.
       ("TOMACORRIENTE 120V" "outlet 120V" ((0.0 0.179764))))
 
-;;; --- Automatic numbering (DT-AUTOLABEL) ------------------------------------
+;;; --- Load takeoff (DT-LOAD) ------------------------------------------------
 
-  ;; Reactors OFF until the drafter types DT-AUTOLABELON. Set to T only if the
-  ;; office wants live renumbering in every drawing; see README section 6.8 for
-  ;; why that is not the default.
-  *dt:lbl:startup*     nil
+  ;; Attributes each device block carries. Give them sensible defaults in the
+  ;; block so the common case is zero typing: a 120 V general purpose outlet
+  ;; should already say what it is and what it draws the moment it is inserted.
+  ;;
+  ;; A block counts as a device if it has the power attribute at all. Anything
+  ;; else in the selection is ignored, so windowing round a circuit and catching
+  ;; text or tags is harmless.
+  ;;
+  ;; Write POTENCIA as a plain number. Spaces and thousands separators are
+  ;; stripped, so 1500 and "1,500" both read as 1500; a decimal must use a
+  ;; period, "180.5".
+  *dt:ld:desc-tag*     "DESCRIPCION"
+  *dt:ld:power-tag*    "POTENCIA"
+  *dt:ld:volt-tag*     "VOLTAJE"
+
+  ;; Holds the circuit label. Make it INVISIBLE in the block -- you do not want
+  ;; "cocina" printed on the plan, but Properties and EATTEDIT still show it so
+  ;; it stays inspectable and fixable by hand.
+  *dt:ld:circuit-tag*  "CIRCUITO"
+
+  ;; Where the CSV goes. nil = beside the drawing, named <drawing>-load.csv
+  *dt:ld:file*         nil
+
+;;; --- Sheet numbering (DT-SHEETS) -------------------------------------------
+
+  ;; Prefix used for the very first DT-SHEETS prompt of a session. After that
+  ;; the command offers whatever you last typed, so this is only a seed.
+  *dt:sh:prefix*       "EL-"
+
+  ;; Zero-padded width of the sheet number: 2 = 01, 3 = 001.
+  *dt:sh:pad*          2
+
+;;; --- Numbering (DT-SETGROUP, DT-RENUMBER, DT-COUNTS) -----------------------
 
   ;; ---------------------------------------------------------------------
   ;; WHAT GETS COUNTED
@@ -135,14 +164,6 @@
   ;; an exact Y comparison. Use the drawing units of your plan.
   *dt:lbl:row-tol*     0.0
 
-  ;; Commands after which a renumber is worth doing. Anything that can add,
-  ;; remove or move a numbered block belongs here; everything else is skipped so
-  ;; the reactor is not walking the drawing after every zoom and layer change.
-  *dt:lbl:commands*
-    '("COPY" "COPYCLIP" "PASTECLIP" "PASTEORIG" "PASTEBLOCK"
-      "ERASE" "OOPS" "MIRROR" "MOVE" "STRETCH" "ROTATE" "SCALE"
-      "ARRAY" "ARRAYRECT" "ARRAYPOLAR" "ARRAYPATH"
-      "INSERT" "-INSERT" "MINSERT" "EXPLODE" "PROPERTIES" "PURGE")
 )
 
 (princ)
