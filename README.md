@@ -40,7 +40,10 @@ If the folder is ever moved, update `*dt:fallback-root*` at the top of
 | `DT-RENUMBER` | `RNB` | Renumber every group's `NUMBER` attribute once, in plan reading order. |
 | `DT-SETGROUP` | `SG` | Select blocks, type a group name; tags them all and renumbers. |
 | `DT-COUNTS` | — | Report how many of each group are in the drawing. |
-| `DT-AUTOLABELON` / `DT-AUTOLABELOFF` | — | Turn live renumbering on or off for the current drawing. Off by default. |
+| `DT-SETCIRCUIT` | `SC` | Writes a circuit label into each selected device's `CIRCUITO` attribute. |
+| `DT-RENCIRCUIT` | — | Renames a circuit across the drawing, one at a time or from an `old,new` CSV. |
+| `DT-LOAD` | `LD` | Totals connected load per circuit and writes a CSV. |
+| `DT-SHEETS` | `SHT` | Renames the layout tabs to `<prefix><number>` in tab order, keeping any descriptive text. |
 
 Together these cover one workflow: **place fixtures → number the circuits and
 panels → wire them**. Everything we add should slot into a workflow that
@@ -57,7 +60,9 @@ addons/
     dt-core.lsp        <- shared: sysvar save/restore, undo marks, layers
     dt-fixture.lsp     <- DT-FIXCEN
     dt-wiretree.lsp    <- DT-WTREE
-    dt-label.lsp       <- DT-RENUMBER, DT-AUTOLABEL*
+    dt-label.lsp       <- DT-SETGROUP, DT-RENUMBER, DT-COUNTS
+    dt-sheet.lsp       <- DT-SHEETS
+    dt-load-takeoff.lsp<- DT-SETCIRCUIT, DT-RENCIRCUIT, DT-LOAD
   legacy/                 <- the pre-restructure originals, kept for reference
 ```
 
@@ -401,7 +406,9 @@ That is the standard to hold.
 ### 6.8 Loading must have no side effects
 
 Loading a file should define functions and print one load message. Nothing more.
-Live reactors, in particular, are opt-in: see `*dt:lbl:startup*`.
+This is why numbering is on demand: an earlier version installed a reactor
+that renumbered as you drew, and it was removed. A live reactor is a standing
+cost in every drawing for something `DT-RENUMBER` does when asked.
 
 ---
 
@@ -443,8 +450,8 @@ step, and this list is the order to work through.
 
 1. **Test in AutoCAD.** In order: load, `DT-SETBLOCK`, `DT-FIXCEN`, `DT-FIXDIV`,
    `DT-SETPORT` on both symbols, `DT-WTREE`, `DT-RENUMBER`, then
-   `DT-AUTOLABELON` with a copy/erase/move. Check that Esc mid-command leaves
-   OSNAP and the undo stack intact, and that one `U` undoes one command.
+   Check that Esc mid-command leaves OSNAP and the undo stack intact, and that
+   one `U` undoes one command.
 2. **Measure the real symbols** with `DT-SETPORT` (§4). The `L24` and `TC`
    numbers shipped in config are placeholders — `TC` in particular is a copy of
    the fixture's distance and is almost certainly wrong for the `O=` bars.

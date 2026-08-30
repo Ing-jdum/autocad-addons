@@ -9,12 +9,27 @@ the handoff.
 All six files parse (balanced parens), every namespaced call resolves to a
 definition, and every config key is both defined and used.
 
-**Confirmed working in AutoCAD:** the tools load, and `DT-SETPORT` measures
-correctly — including the outlet, which is what the block-coordinate rewrite was
-for. `dt-blocks.lsp` records its two bars as
-`(0.033948 0.224486)` and `(-0.033089 0.224693)`: symmetric about the centre
-line, same height. That is the offset-from-centre geometry the old radial model
-could not hold. **Everything else is still untested.**
+**Confirmed working in AutoCAD:**
+
+- The tools load.
+- `DT-SETPORT` measures correctly, including the outlet — which is what the
+  block-coordinate rewrite was for. `dt-blocks.lsp` records its two bars as
+  `(0.033948 0.224486)` and `(-0.033089 0.224693)`: symmetric about the centre
+  line, same height. That is the offset-from-centre geometry the old radial
+  model could not hold.
+- `DT-WTREE` wires outlets correctly, **including mirrored ones** — the negative
+  scale factor path through `wt:to-world`, and the specific case the old radial
+  model got wrong.
+
+- `COUNT_TAG` exists and is in use; group tagging and numbering work.
+
+**The wiring module is fully verified.** That was the project's largest
+technical risk and it is now closed.
+
+Untested: `DT-FIXCEN`, `DT-FIXDIV`, `DT-SETBLOCK` — the placement side — and
+`DT-SHEETS`. The layout-name parsing in `DT-SHEETS` is verified against ten
+cases, but its COM side (`vla-get-TabOrder`, `vla-put-Name`, the two-pass
+rename) has only been reasoned about. Try it on a copy of a drawing first.
 
 ```
 dt-load.lsp        Startup Suite entry point; sets *dt:root*
@@ -23,7 +38,9 @@ dt-blocks.lsp      GENERATED block registry (does not exist until first run)
 src/dt-core.lsp    sysvar save/restore, undo marks, layers, validation
 src/dt-fixture.lsp DT-FIXCEN, DT-FIXDIV, DT-SETBLOCK
 src/dt-wiretree.lsp DT-WTREE, DT-SETPORT, DT-PORTS
-src/dt-label.lsp   DT-SETGROUP, DT-RENUMBER, DT-COUNTS, DT-AUTOLABEL*
+src/dt-label.lsp   DT-SETGROUP, DT-RENUMBER, DT-COUNTS
+src/dt-sheet.lsp   DT-SHEETS
+src/dt-load-takeoff.lsp  DT-SETCIRCUIT, DT-RENCIRCUIT, DT-LOAD
 legacy/            the three original routines; nothing loads them
 ```
 
@@ -97,20 +114,13 @@ four cardinal points off its bounding box, turned with the block.
 
 ## Do this first when we resume
 
-1. **`DT-WTREE` on real outlets**, now that they measure correctly. Test a
-   **mirrored** one specifically — facing-wall copies are the case the old code
-   got wrong, and the negative scale factor path has not been exercised yet.
-2. The rest of the untested surface, roughly in dependency order:
-   `DT-SETBLOCK` (the new numbered menu), `DT-FIXCEN`, `DT-FIXDIV` (both spacing
-   modes, and the curve path), `DT-SETGROUP` / `DT-RENUMBER` / `DT-COUNTS`,
-   then `DT-AUTOLABELON` with a copy/erase/move.
-3. Check Esc mid-command leaves OSNAP and the undo stack intact, and that one
+1. **Placement**: `DT-SETBLOCK` (the numbered menu), then `DT-FIXCEN`, then
+   `DT-FIXDIV` — both spacing modes, and the arc/polyline path.
+2. Check Esc mid-command leaves OSNAP and the undo stack intact, and that one
    `U` undoes one whole command.
 
 ## Known loose ends
 
-- **`COUNT_TAG` does not exist yet.** Needs drawing once and adding to the
-  office template, with attributes tagged `GROUP` and `NUMBER`.
 - **`*dt:lbl:row-tol*` is `0.0`**, which means exact-Y matching and no useful
   row banding. Wants roughly half a fixture spacing in drawing units.
 - **`*dt:fallback-root*` in [dt-load.lsp](dt-load.lsp)** is a hardcoded path to

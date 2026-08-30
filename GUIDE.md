@@ -59,8 +59,10 @@ Every command has a short alias. Use whichever you like.
 | `DT-SETGROUP` | `SG` | Tag blocks as a counting group |
 | `DT-RENUMBER` | `RNB` | Renumber every group now |
 | `DT-COUNTS` | — | Count how many of each group |
-| `DT-AUTOLABELON` | — | Renumber automatically as you draw |
-| `DT-AUTOLABELOFF` | — | Stop doing that |
+| `DT-SETCIRCUIT` | `SC` | Tag devices with a circuit label |
+| `DT-RENCIRCUIT` | — | Rename circuits, one or from a CSV |
+| `DT-LOAD` | `LD` | Load per circuit, to CSV |
+| `DT-SHEETS` | `SHT` | Number the layout tabs in tab order |
 
 ---
 
@@ -331,13 +333,163 @@ Good for filling in a schedule. **Also your typo check** — `tug` and `TUG` are
 treated as the same group, but `TGU` shows up as its own group with a count of
 1. That's how you spot it.
 
-### Automatic renumbering — `DT-AUTOLABELON`
+---
 
-Turns on live renumbering: copy a tag and everything renumbers itself. Off by
-default because it's working constantly in the background.
+## Circuits and load — `SC`, `LD`
 
-`DT-AUTOLABELOFF` stops it. It's per drawing, and off again next time you open
-AutoCAD.
+Tag devices into circuits, then export what each one draws. The order matters:
+**circuit numbers come last**, because you balance the loads to decide them.
+
+```
+1. SC             group devices under any label -- "cocina", "A", "1"
+2. LD             export every circuit to one CSV
+3. balance in Excel
+4. DT-RENCIRCUIT  apply the final numbers back to the drawing
+```
+
+### Tag a circuit — `SC`
+
+First time in a drawing there is nothing to pick from, so it just asks:
+
+```
+Command: SC
+Select the devices in one circuit:            <- select, Enter
+  No circuits tagged yet -- this will be the first.
+Circuit label: cocina
+7 device(s) set to circuit cocina.
+```
+
+After that it lists what exists, so you pick a number instead of retyping —
+which is what stops `cocina` and `Cocina` becoming two different circuits:
+
+```
+Command: SC
+Select the devices in one circuit:            <- select, Enter
+  Circuits in this drawing:
+   1. cocina                  7 device(s)
+   2. habitaciones1          12 device(s)
+Circuit number, or [New/Clear] <cocina>: N
+New circuit label: sala
+9 device(s) set to circuit sala.
+```
+
+`N` makes a new circuit. `C` clears the label off the selection.
+
+The label lives in each device's `CIRCUITO` attribute, which is invisible — it
+doesn't print, but Properties and `EATTEDIT` still show it if you need to fix
+one by hand.
+
+### Export the load — `LD`
+
+Select everything. Rows come out grouped by circuit:
+
+```
+Command: LD
+Select the devices to total (all of them, normally):    <- select all, Enter
+
+  Circuito 1
+  Descripcion                        V      VA   Cant     Total
+  ---------------------------------- ---- ----- ------ ---------
+  TOMACORRIENTE 120V                  120   150      3       450
+  ---------------------------------- ---- ----- ------ ---------
+                                                     3       450
+
+  Circuito 2
+  ...
+
+  Total connected load: 1500 VA
+
+Written to C:\...\LEYENDA-EJEMPLO-VIVIENDAS-load.csv
+```
+
+and the CSV pastes straight into Excel:
+
+```
+Circuit,Description,Voltage,VA each,Qty,Total VA
+"1","TOMACORRIENTE 120V","120",150,3,450
+"2","TOMACORRIENTE 120V","",150,3,450
+"3","SALIDA CENITAL","",60,10,600
+```
+
+**Rows split by what a device *is*, not which block it is.** The same
+`TOMACORRIENTE 120V` used as a general outlet and as a fridge gives two rows,
+because the description and VA differ. That's the point — counting the block
+alone would merge loads that have nothing to do with each other.
+
+Devices you haven't tagged yet land in a `(sin circuito)` row, which doubles as
+your "what did I miss" check.
+
+> A blank `VOLTAJE` just shows as empty — it doesn't affect anything, since the
+> totals add VA. A blank `POTENCIA` is different: those devices are **left out
+> of the totals** and reported, because counting them as zero would understate
+> the circuit.
+
+### Apply the final numbers — `DT-RENCIRCUIT`
+
+Once you've balanced and decided `cocina` is really circuit 3, hand the mapping
+back as a CSV — the same file you did the balancing in:
+
+```
+old,new
+cocina,3
+habitaciones1,1
+sala,2
+```
+
+```
+Command: DT-RENCIRCUIT
+  Circuits in this drawing:
+   1. cocina                  7 device(s)
+   2. habitaciones1          12 device(s)
+   3. sala                    9 device(s)
+Rename which number, or [File]? F
+                                              <- pick the CSV
+28 device(s) renumbered from 3 of 3 mapping(s).
+```
+
+The header row is optional. Anything in the file that isn't in the drawing is
+listed so you can see it was skipped.
+
+Renaming two circuits onto the same label merges them, which is a normal result
+of balancing. Doing it one at a time (pick a number instead of `F`) asks first,
+since that one is easy to do by accident.
+
+---
+
+## Numbering the sheets — `SHT`
+
+Renames the layout tabs to `EL-01`, `EL-02`, … **left to right along the tabs**.
+Reorder the tabs, run it again, and the set renumbers to match.
+
+```
+Command: SHT
+Sheet prefix <EL->:              <- press Enter, or type a different one
+4 layout(s) numbered EL-01 to EL-04.
+```
+
+The prefix is whatever you want — `EL-`, `ME-`, `CI-`. It offers the one you
+used last, so on the second sheet set of the day it's just `SHT` then Enter.
+
+**Your descriptions are kept.** Only the number in front is rewritten:
+
+```
+  tab order            becomes
+  EL-03 LIGHTING  ->   EL-01 LIGHTING
+  PLANTA          ->   EL-02 PLANTA
+  EL-01 DETAILS   ->   EL-03 DETAILS
+  Layout1         ->   EL-04
+```
+
+A tab that was never numbered — `PLANTA` — keeps its whole name and just gains
+a number in front. The **Model** tab is never touched.
+
+> A name like `PLANO 2 DE 5` is treated as *unnumbered* and kept whole, so it
+> becomes `EL-01 PLANO 2 DE 5`. That's deliberate: a space is not accepted as
+> the separator before a number, otherwise it would read `PLANO` as the prefix,
+> `2` as the number, and throw away everything but `DE 5`.
+
+If a rename fails partway for any reason, all the tabs go back to their original
+names rather than being left half renamed.
 
 ---
 
@@ -352,6 +504,10 @@ AutoCAD.
 6.  WTREE       select a circuit's worth, wire it
 7.  SG          tag the circuit tags as group C
 8.  DT-COUNTS   check the totals for the schedule
+9.  SC          tag each circuit's devices
+10. LD          export the load per circuit
+11. DT-RENCIRCUIT   apply the balanced numbers back from Excel
+12. SHT         number the layout tabs once the sheets are laid out
 ```
 
 ---
