@@ -4,8 +4,6 @@
 ;;; Commands:  DT-RENUMBER      renumber every group once, now   (alias: RNB)
 ;;;            DT-SETGROUP      set the group tag on picked blocks (alias: SG)
 ;;;            DT-COUNTS        report how many of each group exist
-;;;            DT-AUTOLABELON   renumber automatically as you draw
-;;;            DT-AUTOLABELOFF  stop doing that
 ;;;
 ;;; ---------------------------------------------------------------------------
 ;;; THE GROUPING MODEL
@@ -24,9 +22,12 @@
 ;;;
 ;;; Blocks with a blank GROUP are skipped and reported, never guessed at.
 ;;;
+;;; Renumbering is on demand only. There was once a reactor that renumbered as
+;;; you drew; it was removed because DT-RENUMBER covers the need and a live
+;;; reactor is a standing cost in every drawing for a command you can just type.
+;;;
 ;;; Config: *dt:lbl:block*, *dt:lbl:group-tag*, *dt:lbl:number-tag*,
-;;;         *dt:lbl:format*, *dt:lbl:order*, *dt:lbl:row-tol*,
-;;;         *dt:lbl:commands*, *dt:lbl:startup*
+;;;         *dt:lbl:format*, *dt:lbl:order*, *dt:lbl:row-tol*
 ;;; ===========================================================================
 
 ;;; --- Text helpers ----------------------------------------------------------
@@ -159,9 +160,9 @@
         (setq want (strcat prefix
                            (lbl:padzeros (itoa num) (nth 3 *dt:lbl:format*))
                            suffix))
-        ;; Skip writes that would change nothing. On a drawing with a few
-        ;; hundred tags this is the difference between a reactor you notice and
-        ;; one you do not.
+        ;; Skip writes that would change nothing, so the reported count is
+        ;; what actually moved rather than the size of the drawing, and the undo
+        ;; step stays small on a plan carrying a few hundred tags.
         (if (/= (vla-get-textstring att) want)
           (progn (vla-put-textstring att want)
                  (setq done (1+ done))))
@@ -271,69 +272,5 @@
 
 (defun c:RNB () (c:DT-RENUMBER))
 (defun c:SG  () (c:DT-SETGROUP))
-
-;;; --- Reactor callbacks -----------------------------------------------------
-;;; lbl:current holds the name of the command that is running, captured at
-;;; start, because :vlr-commandended does not tell us what ended. It is the one
-;;; deliberate global here: it has to survive between two callbacks.
-
-(defun lbl:command-start (rtr arg)
-  (setq lbl:current (strcase (car arg)))
-  (princ)
-)
-
-(defun lbl:command-end (rtr arg)
-  ;; UNDO and REDO are skipped on purpose. Renumbering right after an undo
-  ;; would stack a fresh operation on top of the one just reversed, discarding
-  ;; the redo and making the drafter's next U undo our renumber instead of
-  ;; their own work.
-  (if (and lbl:current
-           (not (member lbl:current '("UNDO" "U" "REDO" "MREDO")))
-           (member lbl:current *dt:lbl:commands*))
-    ;; No undo mark here, deliberately: the writes fold into the undo step of
-    ;; the command that just ended, so undoing that COPY also undoes the
-    ;; renumbering it triggered. DT-RENUMBER marks its own, being standalone.
-    (lbl:renumber-all))
-  (setq lbl:current nil)
-  (princ)
-)
-
-;;; --- Enable / disable ------------------------------------------------------
-
-(defun lbl:disable (key)
-  (foreach grp (vlr-reactors :vlr-command-reactor)
-    (foreach obj (cdr grp)
-      (if (= key (vlr-data obj)) (vlr-remove obj))))
-  (setq lbl:current nil)
-  nil
-)
-
-(defun lbl:enable (key)
-  (lbl:disable key)
-  (vlr-set-notification
-    (vlr-command-reactor key
-      '((:vlr-commandwillstart . lbl:command-start)
-        (:vlr-commandended     . lbl:command-end)))
-    'active-document-only)
-  (lbl:renumber-all)
-  t
-)
-
-(defun c:DT-AUTOLABELON ()
-  (lbl:enable "dt-autolabel")
-  (princ "\nAuto numbering ON for this drawing.")
-  (princ)
-)
-
-(defun c:DT-AUTOLABELOFF ()
-  (lbl:disable "dt-autolabel")
-  (princ "\nAuto numbering OFF.")
-  (princ)
-)
-
-;;; --- Startup ---------------------------------------------------------------
-;;; Off unless the office explicitly opts in via config (README 6.8).
-
-(if *dt:lbl:startup* (lbl:enable "dt-autolabel"))
 
 (princ)
