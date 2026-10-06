@@ -289,7 +289,12 @@
     (dt:report-error msg)
   )
 
-  (setq layer *dt:wt:layer*
+  ;; nil, or a blank name, means draw on whatever layer is current -- the same
+  ;; contract *dt:fx:layer* has. Resolved once, here, so the entmake, the layer
+  ;; check and the report line all speak about the same layer.
+  (setq layer (if (and *dt:wt:layer* (/= *dt:wt:layer* ""))
+                *dt:wt:layer*
+                (getvar "CLAYER"))
         fuzz  *dt:wt:fuzz*
         bulge (wt:tan (/ (dt:deg->rad *dt:wt:arc-angle*) 4.0)))
 
