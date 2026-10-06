@@ -40,8 +40,10 @@
 
 ;;; --- Wiring runs (DT-WTREE) ------------------------------------------------
 
-  ;; Layer the arcs are created on, made automatically if missing.
-  *dt:wt:layer*        "E-WIRE"
+  ;; Layer the arcs are drawn on. nil = whatever layer is current, the same as
+  ;; *dt:fx:layer*. Name one instead and it is created if missing, in the
+  ;; colour below -- which is also the only thing that colour is for.
+  *dt:wt:layer*        nil
   *dt:wt:color*        4           ; ACI colour for that layer
 
   ;; Included angle of each run, in degrees. Larger = more bowed.
@@ -126,6 +128,21 @@
   ;; Zero-padded width of the sheet number: 2 = 01, 3 = 001.
   *dt:sh:pad*          2
 
+;;; --- Dimensioning fixtures (DT-FIXDIM) -------------------------------------
+
+  ;; How far off horizontal or vertical a run may be, in degrees, and still be
+  ;; dimensioned as if it were square to the drawing. Fixtures placed by eye are
+  ;; never exactly in line; snapping keeps the dimension line clean and costs
+  ;; well under a millimetre per metre at two degrees. Set it to 0.0 to measure
+  ;; exactly what is drawn, however crooked.
+  *dt:dm:square-tol*   2.0
+
+  ;; Fixtures closer together than this ALONG the direction being measured are
+  ;; treated as one point. It is what makes Horizontal on a column of fixtures
+  ;; give one distance to the wall instead of a stack of 3 mm dimensions.
+  ;; In drawing units: 0.05 suits a drawing in metres, 50 one in millimetres.
+  *dt:dm:merge-tol*    0.05
+
 ;;; --- Numbering (DT-SETGROUP, DT-RENUMBER, DT-COUNTS) -----------------------
 
   ;; ---------------------------------------------------------------------
@@ -153,16 +170,81 @@
   ;;   '("%G-" "" 1 2)  ->  C-01, C-02, P-01     NUMBER holds the full tag
   *dt:lbl:format*      '("" "" 1 2)
 
+  ;; Per-group prefixes are NOT set here. They are drafter-facing, so they live
+  ;; in dt-labels.lsp, written by DT-SETPREFIX. This file stays hand-edited
+  ;; only. The prefix above is the shared default every unlisted group uses.
+
+  ;; Block DT-SWITCH places. A clone of COUNT_TAG, made the first time the
+  ;; command runs, so switch-leg tags look identical to counter tags but carry
+  ;; a different name -- which is the whole reason DT-RENUMBER never sees them
+  ;; and their repeated labels survive. Point it at an office block of your own
+  ;; and nothing is cloned.
+  *dt:sw:block*        "SWITCH_TAG"
+
+  ;; Groups that count in letters instead of numbers: A, B, ... Z, AA, AB,
+  ;; the way spreadsheet columns run. Every group not listed counts 1, 2, 3.
+  ;; Prefix, suffix and start still apply; pad does not -- A is never 0A.
+  ;;
+  ;; The starting list only. DT-SETLETTERS switches a group from inside AutoCAD
+  ;; and records it in dt-labels.lsp, which loads after this file and wins.
+  *dt:lbl:letter-groups*  '()
+
   ;; Numbering order.
   ;;   'reading   top-to-bottom, then left-to-right   (how a plan is read)
   ;;   'columns   left-to-right, then bottom-to-top
-  ;;   'database  order the blocks were created in
+  ;;   'database  the order the tags were inserted     (first placed is 01)
+  ;;
+  ;; The starting value only. DT-SETORDER switches it from inside AutoCAD and
+  ;; records it in dt-labels.lsp, which loads after this file and wins.
   *dt:lbl:order*       'reading
 
-  ;; Row banding for 'reading: fixtures whose Y differs by less than this are
-  ;; treated as the same row and numbered left-to-right across it. Set to 0 for
-  ;; an exact Y comparison. Use the drawing units of your plan.
+  ;; Row banding for 'reading: tags whose Y differs by less than this are
+  ;; treated as the same row and numbered left-to-right across it.
+  ;;
+  ;; This is the starting value only. DT-SETROW sets it from inside AutoCAD and
+  ;; records it in dt-labels.lsp, which loads after this file and wins.
+  ;;
+  ;; 0.0 means an exact Y comparison, which sounds strict but is not useful: two
+  ;; tags a thousandth of a unit apart become separate rows, so anything copied
+  ;; as part of a selection stops reading left-to-right. Run DT-SETROW and pick
+  ;; two tags that belong to the same row.
   *dt:lbl:row-tol*     0.0
+
+  ;; Text height for the COUNT_TAG that DT-TAG builds when the drawing has
+  ;; none. It draws the number and nothing else -- no circle, no frame.
+  ;; nil means match this drawing: TEXTSIZE, or DIMTXT if the current text
+  ;; style has a fixed height. Set a number only to override that.
+  ;; A COUNT_TAG that already exists -- one that came in with the office
+  ;; template -- is never touched, so this only applies to a drawing that
+  ;; starts without one.
+  *dt:lbl:tag-height*  nil
+
+;;; --- Panels (DT-PANELS, DT-SETPANEL) ---------------------------------------
+
+  ;; ---------------------------------------------------------------------
+  ;; WHAT GETS FILLED
+  ;;
+  ;; A block is a panel if it carries the name attribute. Nothing keys on the
+  ;; block name, so a switchboard symbol, a panelboard symbol and a meter
+  ;; module symbol all fill from the same schedule.
+  ;;
+  ;; Give the panel block these two attributes at minimum:
+  ;;
+  ;;   PANEL   the tag, e.g. LC.PS.001   -- typed by the drafter
+  ;;   KVA     the connected load        -- filled by DT-SETPANEL
+  ;;
+  ;; Any further attribute fills too, as long as the CSV has a column whose
+  ;; header matches its tag. VOLTAJE, MAIN and KAIC all work with no change
+  ;; here: add the column, get the column.
+  ;; ---------------------------------------------------------------------
+  *dt:pn:name-tag*     "PANEL"
+
+  ;; Only used for the running total DT-PANELS prints. A value it cannot read
+  ;; as a number is still written to the drawing untouched.
+  *dt:pn:kva-tag*      "KVA"
+
+  ;; Where the CSV goes. nil = beside the drawing, named <drawing>-panels.csv
+  *dt:pn:file*         nil
 
 )
 
