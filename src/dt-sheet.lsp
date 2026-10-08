@@ -1,7 +1,9 @@
 ;;; ===========================================================================
 ;;; DT-SHEET.LSP  --  Number the layout tabs by tab order.
 ;;;
-;;; Command:  DT-SHEETS      (alias: SHT)
+;;; Commands:  DT-SHEETS     (alias: SHT)
+;;;            DT-NOLW       turn off "Plot object lineweights" on every
+;;;                          layout  (alias: NOLWPLOT)
 ;;;
 ;;; Renames every paper space layout to <prefix><number>, left to right along
 ;;; the tabs, so reordering the tabs and re-running renumbers the set. The Model
@@ -147,5 +149,37 @@
 )
 
 (defun c:SHT () (c:DT-SHEETS))
+
+;;; --- Lineweights -----------------------------------------------------------
+;;; Clears "Plot object lineweights" in each paper space layout's page setup.
+;;; Model keeps its own plot settings and is left alone, as are named page
+;;; setups stored in the drawing -- only the layouts themselves change.
+
+(defun c:DT-NOLW ( / *error* doc lays n)
+
+  (defun *error* (msg)
+    (dt:undo-end doc)
+    (dt:report-error msg)
+  )
+
+  (setq lays (sh:layouts))
+  (cond
+    ((null lays) (princ "\nThis drawing has no layouts."))
+    (t
+     (setq doc (dt:undo-begin)
+           n   0)
+     (foreach lay lays
+       (if (= (vla-get-PlotWithLineweights lay) :vlax-true)
+         (progn
+           (vla-put-PlotWithLineweights lay :vlax-false)
+           (setq n (1+ n)))))
+     (vla-Regen doc acAllViewports)
+     (setq doc (dt:undo-end doc))
+     (princ (strcat "\nLineweight plotting turned off on " (itoa n)
+                    " of " (itoa (length lays)) " layout(s)."))))
+  (princ)
+)
+
+(defun c:NOLWPLOT () (c:DT-NOLW))
 
 (princ)

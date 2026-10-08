@@ -44,6 +44,7 @@ If the folder is ever moved, update `*dt:fallback-root*` at the top of
 | `DT-RENCIRCUIT` | — | Renames a circuit across the drawing, one at a time or from an `old,new` CSV. |
 | `DT-LOAD` | `LD` | Totals connected load per circuit and writes a CSV. |
 | `DT-SHEETS` | `SHT` | Renames the layout tabs to `<prefix><number>` in tab order, keeping any descriptive text. |
+| `DT-NOLW` | `NOLWPLOT` | Turns off "Plot object lineweights" in the page setup of every layout. |
 
 Together these cover one workflow: **place fixtures → number the circuits and
 panels → wire them**. Everything we add should slot into a workflow that
@@ -61,7 +62,7 @@ addons/
     dt-fixture.lsp     <- DT-FIXCEN
     dt-wiretree.lsp    <- DT-WTREE
     dt-label.lsp       <- DT-SETGROUP, DT-RENUMBER, DT-COUNTS
-    dt-sheet.lsp       <- DT-SHEETS
+    dt-sheet.lsp       <- DT-SHEETS, DT-NOLW
     dt-load-takeoff.lsp<- DT-SETCIRCUIT, DT-RENCIRCUIT, DT-LOAD
   legacy/                 <- the pre-restructure originals, kept for reference
 ```

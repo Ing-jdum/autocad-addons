@@ -30,6 +30,7 @@ Untested: `DT-FIXCEN`, `DT-FIXDIV`, `DT-SETBLOCK` — the placement side — and
 `DT-SHEETS`. The layout-name parsing in `DT-SHEETS` is verified against ten
 cases, but its COM side (`vla-get-TabOrder`, `vla-put-Name`, the two-pass
 rename) has only been reasoned about. Try it on a copy of a drawing first.
+`DT-NOLW` is also untested in AutoCAD.
 
 ```
 dt-load.lsp        Startup Suite entry point; sets *dt:root*
@@ -39,7 +40,7 @@ src/dt-core.lsp    sysvar save/restore, undo marks, layers, validation
 src/dt-fixture.lsp DT-FIXCEN, DT-FIXDIV, DT-SETBLOCK
 src/dt-wiretree.lsp DT-WTREE, DT-SETPORT, DT-PORTS
 src/dt-label.lsp   DT-SETGROUP, DT-RENUMBER, DT-COUNTS
-src/dt-sheet.lsp   DT-SHEETS
+src/dt-sheet.lsp   DT-SHEETS, DT-NOLW
 src/dt-load-takeoff.lsp  DT-SETCIRCUIT, DT-RENCIRCUIT, DT-LOAD
 legacy/            the three original routines; nothing loads them
 ```

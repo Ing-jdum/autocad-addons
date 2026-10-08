@@ -114,7 +114,20 @@
   ;; it stays inspectable and fixable by hand.
   *dt:ld:circuit-tag*  "CIRCUITO"
 
-  ;; Where the CSV goes. nil = beside the drawing, named <drawing>-load.csv
+  ;; Holds the panel label -- "TD-A", "TABLERO 1". Also INVISIBLE.
+  ;;
+  ;; Circuit numbers only mean anything within a panel: circuit 1 of TD-A and
+  ;; circuit 1 of TD-B are different circuits that happen to share a number, and
+  ;; totalling them together would be wrong. A device with no TABLERO attribute
+  ;; is not an error -- it falls into an unnamed panel, so drawings whose blocks
+  ;; predate this attribute still total correctly as a single panel.
+  *dt:ld:panel-tag*    "TABLERO"
+
+  ;; Where the CSV goes. nil = beside the drawing.
+  ;;
+  ;; DT-LOAD writes one file per panel, <drawing>-<panel>-load.csv, plus a
+  ;; combined <drawing>-load-all.csv carrying a Panel column. Set this to a
+  ;; path to override the base name; the panel suffixes are still added.
   *dt:ld:file*         nil
 
 ;;; --- Sheet numbering (DT-SHEETS) -------------------------------------------

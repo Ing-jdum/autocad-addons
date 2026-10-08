@@ -63,6 +63,7 @@ Every command has a short alias. Use whichever you like.
 | `DT-RENCIRCUIT` | — | Rename circuits, one or from a CSV |
 | `DT-LOAD` | `LD` | Load per circuit, to CSV |
 | `DT-SHEETS` | `SHT` | Number the layout tabs in tab order |
+| `DT-NOLW` | `NOLWPLOT` | Plot every layout without lineweights |
 
 ---
 

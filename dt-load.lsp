@@ -78,6 +78,7 @@
                      "src\\dt-wiretree.lsp"
                      "src\\dt-label.lsp"
                      "src\\dt-sheet.lsp"
+                     "src\\dt-text.lsp"
                      "src\\dt-load-takeoff.lsp")
         (if (not (dt:load-file root rel)) (setq ok nil)))
 
@@ -98,9 +99,13 @@
           (princ "\n  DT-RENUMBER (RNB)          renumber every group now")
           (princ "\n  DT-COUNTS                  how many of each group in the drawing")
           (princ "\n  DT-SHEETS   (SHT)          number the layout tabs in tab order")
-          (princ "\n  DT-SETCIRCUIT (SC)         tag selected devices with a circuit")
+          (princ "\n  DT-NOLW     (NOLWPLOT)     plot every layout without lineweights")
+          (princ "\n  DT-PREFIX   (PFX)          put text in front of picked text/mleaders")
+          (princ "\n  DT-SETCIRCUIT (SC)         tag devices with panel + circuit")
           (princ "\n  DT-RENCIRCUIT              rename circuits, one or from a CSV")
-          (princ "\n  DT-LOAD     (LD)           load per circuit, to CSV"))
+          (princ "\n  DT-RENPANEL                rename a panel everywhere")
+          (princ "\n  DT-FIXATTS                 add missing attributes to a block")
+          (princ "\n  DT-LOAD     (LD)           load per panel and circuit, to CSV"))
         (princ "\nDrafting tools: loaded with errors -- see above."))
       ok))
 )
