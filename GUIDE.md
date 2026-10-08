@@ -56,13 +56,26 @@ Every command has a short alias. Use whichever you like.
 | `DT-WTREE` | `WTREE` `WTR` | Wire the selected blocks together |
 | `DT-SETPORT` | `SP` | Teach the tools where wires meet a symbol |
 | `DT-PORTS` | — | Show what `DT-SETPORT` has learned |
+| `DT-TAG` | `TG` | Place counter tags, building `COUNT_TAG` if the drawing has none |
 | `DT-SETGROUP` | `SG` | Tag blocks as a counting group |
 | `DT-RENUMBER` | `RNB` | Renumber every group now |
+| `DT-SETPREFIX` | `SPX` | Set one group's number prefix |
+| `DT-SETROW` | `SR` | Set how far apart one row of tags is |
+| `DT-SETORDER` | `SO` | Number by plan order, or by the order you inserted |
+| `DT-SETLETTERS` | `LTR` | Count one group A, B, C instead of 1, 2, 3 |
+| `DT-SETPAD` | `PAD` | Set one group's digits: `1`, `01` or `001` |
+| `DT-SWITCH` | `SWL` | Tag switch legs, repeating the letter as you click |
+| `DT-SWNEXT` | `SWN` | Place one switch tag at the next letter, then get out |
+| `DT-SETSKIP` | `SKP` | Stop `RNB` renumbering one group |
+| `DT-FIXDIM` | `FDM` | Dimension a row of fixtures, wall to wall |
+| `DT-FIXDIMH` | `FDMH` | Same, measured across the sheet |
+| `DT-FIXDIMV` | `FDMV` | Same, measured up the sheet |
 | `DT-COUNTS` | — | Count how many of each group |
 | `DT-SETCIRCUIT` | `SC` | Tag devices with a circuit label |
 | `DT-RENCIRCUIT` | — | Rename circuits, one or from a CSV |
 | `DT-LOAD` | `LD` | Load per circuit, to CSV |
 | `DT-SHEETS` | `SHT` | Number the layout tabs in tab order |
+| `DT-PREFIX` | `PFX` | Put text in front of picked texts / mleaders |
 | `DT-NOLW` | `NOLWPLOT` | Plot every layout without lineweights |
 
 ---
@@ -170,16 +183,84 @@ first prompt and you get the same menu.
 ## Wiring — `WTREE`
 
 Select the blocks you want connected. It draws arcs between them with no loops
-and no doubling back, on layer `E-WIRE` (created automatically).
+and no doubling back, on **whatever layer is current** — set your wiring layer
+before you run it, the same as drawing the runs by hand.
 
 ```
 Command: WTREE
 Select device blocks to wire:                <- window round them, Enter
-14 runs drawn on layer E-WIRE.
+14 runs drawn on layer E-ALUM-CTO.
 ```
 
 It works out the shortest sensible set of connections for you — you don't pick
 pairs. Connect 20 fixtures by selecting all 20 at once.
+
+---
+
+## Dimensioning a row — `FDM`
+
+For the technician mounting the fixtures: how far from the wall the first one
+goes, and how far apart the rest are. One command, four picks:
+
+```
+Command: FDM
+Select the fixtures to dimension:              <- window the row, Enter
+Point on the wall to measure from <first fixture>:   <- click the end wall
+Point on the wall to finish at <last fixture>:       <- click the far wall
+Dimension line location [Chain/Baseline] <Chain>:    <- click where the dims go
+5 dimension(s): 1.20, 2.40, 2.40, 2.40, 1.20
+```
+
+The figures are printed so you can catch a wrong one here instead of on site.
+
+### Which way it measures — `FDMH` and `FDMV`
+
+`FDM` works the direction out from how the fixtures are lined up, so a column of
+lights gets dimensioned down its own length. When you want the *other*
+direction — the distance from the side wall across to that column — use the
+command that says so:
+
+| | |
+|---|---|
+| `FDM` | whichever way the fixtures run |
+| `FDMH` | across the sheet, left to right |
+| `FDMV` | up the sheet, bottom to top |
+
+All three are the same command; `H` and `V` just answer the question up front.
+You can also type `H` or `V` at the dimension line prompt to change your mind
+without restarting, and the prompt shows which way it is set:
+
+```
+Dimension line location [Chain/Baseline/Horizontal/Vertical] <chain, vertical>:
+```
+
+Fixtures that land on the same point *along the direction being measured* are
+dimensioned once, not over and over — so `FDMH` on a column of four lights gives
+one distance to the wall, not four dimensions of 3 mm. `*dt:dm:merge-tol*` in
+config sets how close counts as the same point (`0.05` for a drawing in metres).
+
+**The wall prompts take a point, not the wall.** Snap anywhere on the wall face
+— any point on a wall square to the run gives the same distance. Press Enter to
+skip either one: skip both and you get fixture-to-fixture only, which is the
+other half of what this is for.
+
+**It does not care that your fixtures are slightly out of line.** Every point is
+projected onto the run's axis first, so the dimension line comes out straight
+and each number is the true spacing along the run. That is the part worth
+trusting it for — by hand, two lights 3 mm apart in Y give you a slanted
+dimension and a number nobody wants.
+
+**`B` at the last prompt** measures everything from the first wall instead,
+stacked — `1.20`, `3.60`, `6.00` — rather than gap by gap. Same spacings either
+way, different drawing.
+
+Dimensions use your current dimension style and land on the current layer, the
+same as if you had drawn them by hand.
+
+> A run more than a couple of degrees off square is dimensioned **aligned**, so
+> a diagonal wing measures its true length. The command says so when it happens.
+
+---
 
 ### Setting up a new symbol — `SP`
 
@@ -292,6 +373,34 @@ The group name is just a label you choose — `C`, `P`, `TUG`, `TAB`, whatever
 your office writes on the drawing. Counting a new kind of thing means typing a
 new group name. Nothing to configure, no new block.
 
+### Place the tags -- `TG`
+
+On a drawing made from the office template, `COUNT_TAG` is already there and you
+insert it the usual way. On a drawing that started without it, `TG` builds it
+for you rather than sending you into an old file to copy one:
+
+```
+Command: TG
+Created block "COUNT_TAG" in this drawing.
+Tag insertion point <Enter to finish>:      <- click, click, click, Enter
+Name the batch with SG.
+```
+
+Keep clicking to drop a run of tags; Enter ends it. The whole run is one `U`.
+It never asks you to type anything into the tag -- `SG` fills `GROUP` and `RNB`
+fills `NUMBER`. A fresh tag reads `01` so you can see it on the plan; that is
+a placeholder, and every tag shows it until `RNB` puts the real sequence in. If the drawing already has a `COUNT_TAG`, `TG` uses that one
+untouched, whatever it looks like.
+
+It draws the number and nothing else -- no circle, no frame. Height matches the
+drawing's own `TEXTSIZE`, so it comes out the size your other text is. Set
+`*dt:lbl:tag-height*` in [dt-config.lsp](dt-config.lsp) only if you want to
+override that. If you want a bubble around the number, draw the tag you want
+once and put it in the office template -- `TG` never overrides an existing one.
+
+`GROUP` is invisible on the tag, since it is data rather than annotation. Turn
+`ATTDISP` On if you want to see which tag is in which group.
+
 ### Tag a batch — `SG`
 
 Place your tags, then tell a batch what it is:
@@ -307,6 +416,36 @@ That did two things at once: set `GROUP` to `TUG` on all 24 tags, and filled in
 their `NUMBER` — `01` through `24`, in plan reading order. Do it again with the
 light tags and `C`, and those get their own `01`, `02`, `03`.
 
+### Prefixes -- `SPX`
+
+By default `NUMBER` holds just the number: `01`, `02`. To put something in front
+of it for one group, run `DT-SETPREFIX` (`SPX`). It shows what is set now, then
+asks:
+
+```
+Command: SPX
+  Group                       Prefix
+  --------------------------- ---------------
+  C                           (shared)
+  TUG                         (shared)
+
+GROUP to set a prefix for: TUG
+Prefix for TUG <Enter to clear>: T-
+TUG -> T-, 41 number(s) updated.
+```
+
+`TUG` now numbers `T-01`, `T-02`. Every group still shown as `(shared)` carries
+on exactly as before. Run `SPX` again on the same group to change it, or press
+Enter at the prefix prompt to put it back to shared.
+
+You do not have to edit any file. `SPX` writes `dt-labels.lsp` itself, so the
+setting survives closing AutoCAD and travels with the toolkit.
+
+`%G` in a prefix stands for the group name, so a prefix of `%G-` on group `C`
+gives `C-01`. To do that for *every* group at once rather than one at a time,
+that one is still the shared default in [dt-config.lsp](dt-config.lsp) --
+`*dt:lbl:format*` `'("%G-" "" 1 2)`. Ask and it can become a command too.
+
 ### Renumber — `RNB`
 
 After moving, copying or deleting tags, run `RNB` to put the numbers back in
@@ -316,6 +455,220 @@ order. Numbering runs the way you read a plan: top to bottom, left to right.
 Command: RNB
 41 attribute(s) renumbered.
 ```
+
+### If the numbering order looks wrong — `SR`
+
+`RNB` numbers the way you read a plan: rows top to bottom, left to right across
+each row. To do that it has to decide which tags are on the *same row*, and out
+of the box it demands they sit at **exactly** the same height. Nothing in a real
+drawing does.
+
+The symptom is specific: tags you placed one at a time number correctly, but
+tags that arrived as part of a `COPY` of several objects come out shuffled. They
+look level on screen and are a fraction of a unit apart in Y, which is enough.
+
+Fix it once, with `DT-SETROW` (`SR`):
+
+```
+Command: SR
+Row tolerance is 0.000 drawing units.
+Tags closer than this in Y count as one row and number left to right.
+New tolerance, or pick two points <keep>:      <- pick two tags in the same row
+Row tolerance 143.000, 68 number(s) updated.
+```
+
+You can type a number instead of picking, but picking is easier: click two tags
+that belong to the same row and AutoCAD works out the distance. Anything from
+"a bit more than the wobble in a row" to "less than the gap between rows" works;
+half your fixture spacing is a good answer.
+
+Like `SPX`, it writes `dt-labels.lsp` itself. Set it once per office standard,
+not once per drawing.
+
+### Leaving a group alone — `SKP`
+
+Numbered something by hand and want it to stay exactly as typed? `SKP` turns
+`RNB` off for that group only:
+
+```
+Command: SKP
+  Group                       RNB
+  --------------------------- -------
+  C.PN.                       renumbers
+  TRF                         renumbers
+GROUP to change: TRF
+RNB should [Renumber/Skip] TRF <keep>: S
+RNB skips TRF, 0 number(s) updated.
+```
+
+Every other group keeps renumbering. `RNB` tells you afterwards which groups it
+walked past, so a group that stopped renumbering never looks like a bug:
+
+```
+Command: RNB
+64 attribute(s) renumbered.
+1 group(s) set to skip: TRF
+```
+
+Turn it back on with `SKP` and `R` — the group renumbers from `01` again on the
+spot, so anything typed by hand is gone. That is the one irreversible move here.
+
+`SWL` tags don't need this: they are a different block and `RNB` never sees them
+at all.
+
+### Switch legs — `SWL`
+
+Lights on one switch all carry the same letter, so this one does **not**
+renumber. You click, it stamps, and clicking again stamps the same label:
+
+```
+Command: SWL
+GROUP for these tags: SW-COCINA
+Tag point [Next/Back] <A>:        <- click, click, click   all three read A
+Tag point [Next/Back] <A>: N      <- now B
+Tag point [Next/Back] <B>:        <- click, click          both read B
+Tag point [Next/Back] <B>:        <- Enter ends it
+5 tag(s) placed in SW-COCINA, last one reads B.
+```
+
+Repeating is the default and advancing is the keystroke, because that is the
+way round a switch leg works. `B` steps back if you overshoot.
+
+`N` only moves on once the current label is on the drawing — press it twice by
+accident and the second one is refused, so you cannot leave an empty letter in
+the middle of a run.
+
+The tags are a **separate block**, `SWITCH_TAG` — a copy of `COUNT_TAG` made
+automatically the first time you run `SWL`, so it looks identical on the plan.
+That is what keeps `RNB` away from them: it only ever touches `COUNT_TAG`, so
+your repeated letters cannot be renumbered into `01, 02, 03` by someone running
+`RNB` later. They don't show up in `DT-COUNTS` either — they aren't a count.
+
+Run `SWL` again on the same `GROUP` and it picks up at the last letter you used,
+so a leg that carries into the next room continues rather than restarting at
+`A`. `SPX`, `PAD` and `LTR` apply to these groups the same as any other.
+
+#### One tag at a time — `SWN`
+
+Don't want a command holding the drawing hostage? `SWN` places **one** tag at
+the next letter and ends. Then `COPY` it along the leg, nudge the text, do
+whatever — and type `SWN` again when you want the next letter:
+
+```
+Command: SWN
+Point for B or [Group]:        <- click
+B placed in SW-COCINA. COPY it for the rest of the leg.
+```
+
+No group prompt after the first tag of the session — it uses the last group you
+tagged. `G` changes it.
+
+**New tags are copies of the last one**, so whatever you set on that tag —
+scale, rotation, layer, colour — every tag after it follows. Get the first one
+in the drawing looking right and you never adjust another. (Only the very first
+tag is inserted fresh from the block definition.)
+
+It works out the next letter by **reading the drawing**, not by remembering. So
+it is still right after you copy tags, undo, delete one, close the drawing and
+come back tomorrow, or place a few with `SWL` in between. Copies keep the letter
+they were copied from, which is exactly what a leg is.
+
+#### After changing `SPX`, `PAD` or `LTR` — restamp
+
+The labels are stamped as you place them, so tags already on the sheet keep the
+old format when you change one of those settings. `R` at the first prompt
+rewrites them:
+
+```
+Command: SWL
+GROUP for these tags, or R to restamp: R
+GROUP to restamp: SW-COCINA
+12 tag(s) restamped in SW-COCINA, 4 leg(s): A through D.
+```
+
+Legs stay intact — every tag that shared a label still shares it. The only thing
+that changes beyond formatting is that skipped labels close up: a run that
+jumped `A` to `C` comes back `A`, `B`.
+
+> A group cannot be called `R`, since that is the keyword.
+
+### `01` or `1` — `PAD`
+
+Per group, so eight panels can read `1` to `8` while the fixtures on the same
+sheet read `001` to `240`:
+
+```
+Command: PAD
+  Group                       Digits   Example
+  --------------------------- -------- -------
+  C.PN.                       2        C.PN.01
+  PL-                         2        PL-01
+GROUP to change: PL-
+Digits for PL- (1 = 1, 2 = 01, 3 = 001) <keep>: 3
+PL- -> PL-001, 240 number(s) updated.
+```
+
+`1` means no padding at all. The Example column is the group's *first* tag as it
+will actually read, prefix included — quicker to judge than a digit count.
+
+A group you never touch with `PAD` uses the shared width, the `2` in
+`*dt:lbl:format*`. Setting a group back to that width is how you undo one.
+Letters ignore padding: `A` is never `0A`, and `PAD` says so if you try.
+
+### Letters instead of numbers — `LTR`
+
+Some things are lettered, not numbered — transformers, feeders, details. `LTR`
+switches one group over and leaves every other group alone:
+
+```
+Command: LTR
+  Group                       Counts in
+  --------------------------- ---------
+  C                           numbers
+  TRF                         numbers
+GROUP to change: TRF
+TRF counts in [Numbers/Letters] <keep>: L
+TRF counts in letters, 6 number(s) updated.
+```
+
+`TRF` now reads `A, B, C` and keeps going `Z, AA, AB` past twenty-six. The
+prefix still applies, so a group with prefix `TRF-` gives `TRF-A`, `TRF-B`. Zero
+padding does not: `A` is never `0A`. Switch it back with `LTR` and `N`.
+
+It writes `dt-labels.lsp`, so it holds for the next drawing too.
+
+### Numbering by plan or by the order you placed them — `SO`
+
+Reading order is right most of the time and wrong some of the time: a run you
+walked in the order the circuit actually runs, or tags whose position on the
+sheet says nothing about their sequence, want the order **you** put them down
+in. `DT-SETORDER` (`SO`) switches between the two:
+
+```
+Command: SO
+Numbering order is reading.
+Order [Reading/Columns/Database] <keep>: D
+Numbering order database, 68 number(s) updated.
+```
+
+| | |
+|---|---|
+| `Reading` | rows top to bottom, left to right across each row — how a plan is read |
+| `Columns` | left to right, then bottom to top |
+| `Database` | the order the tags were inserted — first placed is `01` |
+
+`Database` is insert order, so it ignores where the tags sit entirely: place
+them in the sequence you want numbered and run `RNB`. First placed is `01`.
+Moving a tag afterwards does not change its number.
+
+What *does* change it is anything that makes AutoCAD create the entity again —
+`COPY`, cut and paste, `WBLOCK` and back in. A copied tag is a new tag as far as
+the drawing is concerned, so it lands at the end of the run no matter where you
+put it. So does deleting one and placing a replacement.
+
+It writes `dt-labels.lsp` like `SR` and `SPX` do, so the setting survives the
+drawing. Switch it back with `SO` and `R` — nothing is lost either way, since
+`RNB` recomputes every number from scratch each time it runs.
 
 ### Count — `DT-COUNTS`
 

@@ -38,12 +38,27 @@ If the folder is ever moved, update `*dt:fallback-root*` at the top of
 | `DT-SETPORT` | `SP` | Measure a symbol in the drawing — pick where wires meet it — and save that permanently. |
 | `DT-PORTS` | — | List every measured symbol and its attachment points. |
 | `DT-RENUMBER` | `RNB` | Renumber every group's `NUMBER` attribute once, in plan reading order. |
+| `DT-TAG` | `TG` | Insert counter tags, creating the `COUNT_TAG` definition if the drawing lacks one. |
 | `DT-SETGROUP` | `SG` | Select blocks, type a group name; tags them all and renumbers. |
+| `DT-SETPREFIX` | `SPX` | Sets one group's number prefix and writes `dt-labels.lsp`. |
+| `DT-SETROW` | `SR` | Sets the row-banding tolerance for reading order. |
+| `DT-SETORDER` | `SO` | Switches numbering between plan reading order, column order and insert order. |
+| `DT-SETLETTERS` | `LTR` | Switches one group between counting `1, 2, 3` and counting `A, B, C`. |
+| `DT-SETPAD` | `PAD` | Sets how many digits one group pads to — `1`, `01`, `001`. |
+| `DT-SWITCH` | `SWL` | Places switch-leg tags one click at a time, repeating the label until you advance it. |
+| `DT-SWNEXT` | `SWN` | Places one switch tag at the next letter and exits, for a COPY-driven workflow. |
+| `DT-SETSKIP` | `SKP` | Turns `RNB` off for one group, so numbers typed by hand survive. |
+| `DT-FIXDIM` | `FDM` | Dimensions a row of fixtures in one pass — wall to first, fixture to fixture, last to far wall. Direction taken from how the fixtures are lined up. |
+| `DT-FIXDIMH` | `FDMH` | Same, forced across the sheet. |
+| `DT-FIXDIMV` | `FDMV` | Same, forced up the sheet. |
 | `DT-COUNTS` | — | Report how many of each group are in the drawing. |
 | `DT-SETCIRCUIT` | `SC` | Writes a circuit label into each selected device's `CIRCUITO` attribute. |
 | `DT-RENCIRCUIT` | — | Renames a circuit across the drawing, one at a time or from an `old,new` CSV. |
 | `DT-LOAD` | `LD` | Totals connected load per circuit and writes a CSV. |
+| `DT-PANELS` | `PNL` | Lists every panel block and its kVA, and writes a `<drawing>-panels.csv` template carrying the names the drawing already has. |
+| `DT-SETPANEL` | `SPN` | Fills panel attributes from that CSV. Column 1 is the panel name; every other column is written to the attribute its header names. An empty cell leaves the attribute alone. |
 | `DT-SHEETS` | `SHT` | Renames the layout tabs to `<prefix><number>` in tab order, keeping any descriptive text. |
+| `DT-PREFIX` | `PFX` | Puts the same text in front of every picked text or multileader. |
 | `DT-NOLW` | `NOLWPLOT` | Turns off "Plot object lineweights" in the page setup of every layout. |
 
 Together these cover one workflow: **place fixtures → number the circuits and
@@ -62,8 +77,11 @@ addons/
     dt-fixture.lsp     <- DT-FIXCEN
     dt-wiretree.lsp    <- DT-WTREE
     dt-label.lsp       <- DT-SETGROUP, DT-RENUMBER, DT-COUNTS
+    dt-dim.lsp         <- DT-FIXDIM
     dt-sheet.lsp       <- DT-SHEETS, DT-NOLW
+    dt-text.lsp        <- DT-PREFIX
     dt-load-takeoff.lsp<- DT-SETCIRCUIT, DT-RENCIRCUIT, DT-LOAD
+    dt-panel.lsp       <- DT-PANELS, DT-SETPANEL
   legacy/                 <- the pre-restructure originals, kept for reference
 ```
 
@@ -114,6 +132,29 @@ rotated symbol keeps its wiring stubs in the right place.
 
 `DT-WTREE` connects selected blocks with loop-free arcs — a minimum spanning
 tree, so N blocks give exactly N-1 runs and nothing doubles back.
+
+The runs are drawn on the current layer. Set `*dt:wt:layer*` to a layer name if
+you want them forced onto one instead; it is created in `*dt:wt:color*` if the
+drawing lacks it.
+
+### Dimensioning a run — `DT-FIXDIM`
+
+`FDM` takes a selection of fixtures and draws the whole mounting chain in one
+pass. Three decisions are baked in, and they are the reason it exists rather
+than being a macro over `DIMLINEAR`:
+
+- **Insertion points are read, never snapped to.** `(assoc 10 (entget ent))`
+  and `"_non"`, so no running osnap can put an extension line on a stub tip.
+- **Every point is projected onto one axis** before anything is drawn, so a row
+  whose fixtures differ by a few millimetres in Y still gives a straight chain
+  and true along-the-run figures. The axis comes from the two fixtures farthest
+  apart, snapped to orthogonal within `*dt:dm:square-tol*`.
+- **Order comes from the projection**, not from selection or database order.
+
+Orthogonal runs get `DIMLINEAR`, diagonal runs `DIMALIGNED` — a linear dimension
+on a diagonal measures one component and would quietly understate the spacing.
+Both are the native commands, so the office dimension style governs everything
+about how they look, and they land on the current layer.
 
 ### Every symbol connects differently
 
@@ -184,7 +225,7 @@ A one-port outlet in the middle of a chain has a wire in and a wire out, both
 meeting it at the same place. `DT-WTREE` counts those and reports them:
 
 ```
-14 runs drawn on layer E-WIRE. 3 run(s) share an attachment point.
+14 runs drawn on layer E-ALUM-CTO. 3 run(s) share an attachment point.
 ```
 
 That is information, not a warning. It only means something is wrong if the
@@ -243,10 +284,41 @@ expands to the group value:
 Which you want depends on whether the block displays `GROUP` as visible text
 next to `NUMBER`, or whether `NUMBER` alone is the visible label.
 
+`prefix` and `pad` here are the shared defaults. `DT-SETPREFIX` (`SPX`) and
+`DT-SETPAD` (`PAD`) override either one for a single group and record it in
+`dt-labels.lsp`, so `PL-` can read `PL-001` while `C.PN.` reads `C.PN.1`.
+
+### Counting in letters
+
+`DT-SETLETTERS` (`LTR`) switches one group to `A, B, C ... Z, AA, AB` — the way
+spreadsheet columns run. It is per group, so transformers can be lettered while
+the fixtures on the same drawing stay numbered. Like `SPX`, it renumbers at once
+and writes `dt-labels.lsp`.
+
+`*dt:lbl:letter-groups*` in `dt-config.lsp` is the starting list for a drawing
+that has never run the command:
+
+```lisp
+(setq *dt:lbl:letter-groups* '())             ; every group counts in numbers
+(setq *dt:lbl:letter-groups* '("TRF" "PN"))   ; these two count in letters
+```
+
+Prefix, suffix and start still apply — `'("%G-" "" 1 2)` on a letter group
+gives `TRF-A`, `TRF-B`. `pad` does not: `A` is never `0A`.
+
 ### Making the block
 
-`COUNT_TAG` does not exist yet. Draw it once and add it to the office template,
-the same way `L24` and `TOMACORRIENTE 120V` already are.
+`COUNT_TAG` belongs in the office template, the same way `L24` and
+`TOMACORRIENTE 120V` already are. Draw it once and put it there.
+
+Until that happens -- or on a drawing that came from somewhere else --
+`DT-TAG` builds one from `lbl:make-block` in
+[dt-label.lsp](src/dt-label.lsp): a centred visible `NUMBER` and an invisible
+`GROUP` on layer `0`, both preset so insertion never prompts. No circle and no
+frame -- decoration is the template's business. Text height is
+`*dt:lbl:tag-height*`, or the drawing's `TEXTSIZE` when that is nil. It is a fallback, not a replacement for the
+template: a `COUNT_TAG` that already exists is used untouched, whatever it
+looks like, so the drawn-by-hand office version always wins.
 
 **What the code requires** — get these wrong and nothing works:
 

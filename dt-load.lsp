@@ -77,14 +77,20 @@
                      "src\\dt-fixture.lsp"
                      "src\\dt-wiretree.lsp"
                      "src\\dt-label.lsp"
+                     "src\\dt-dim.lsp"
                      "src\\dt-sheet.lsp"
                      "src\\dt-text.lsp"
-                     "src\\dt-load-takeoff.lsp")
+                     "src\\dt-load-takeoff.lsp"
+                     "src\\dt-panel.lsp")
         (if (not (dt:load-file root rel)) (setq ok nil)))
 
       ;; The block registry as measured by DT-SETPORT. Loaded after config so
       ;; what the office recorded wins over the defaults in dt-config.lsp.
       (if (not (dt:load-optional root "dt-blocks.lsp")) (setq ok nil))
+
+      ;; Per-group prefixes as set by DT-SETPREFIX. Same rule: loaded
+      ;; after config so what the drafter recorded wins over the default.
+      (if (not (dt:load-optional root "dt-labels.lsp")) (setq ok nil))
 
       (if ok
         (progn
@@ -95,8 +101,20 @@
           (princ "\n  DT-WTREE    (WTREE, WTR)   wire selected devices, loop-free")
           (princ "\n  DT-SETPORT  (SP)           measure where wires meet a symbol")
           (princ "\n  DT-PORTS                   list the measured symbols")
+          (princ "\n  DT-TAG      (TG)           place counter tags, building COUNT_TAG")
           (princ "\n  DT-SETGROUP (SG)           tag picked blocks as one count group")
           (princ "\n  DT-RENUMBER (RNB)          renumber every group now")
+        (princ "\n  DT-SETPREFIX (SPX)        set one group's number prefix")
+        (princ "\n  DT-SETROW   (SR)           set how far apart one row of tags is")
+        (princ "\n  DT-SETORDER (SO)           number by plan order or by insert order")
+        (princ "\n  DT-SETLETTERS (LTR)        count one group in A, B, C or in 1, 2, 3")
+        (princ "\n  DT-SETPAD   (PAD)          digits one group pads to: 1, 01, 001")
+        (princ "\n  DT-SWITCH   (SWL)          click-by-click tags, label repeats")
+        (princ "\n  DT-SWNEXT   (SWN)          one switch tag at the next letter")
+        (princ "\n  DT-SETSKIP  (SKP)          turn RNB off for one group")
+          (princ "\n  DT-FIXDIM   (FDM)          dimension a row of fixtures, wall to wall")
+          (princ "\n  DT-FIXDIMH  (FDMH)         same, measured across the sheet")
+          (princ "\n  DT-FIXDIMV  (FDMV)         same, measured up the sheet")
           (princ "\n  DT-COUNTS                  how many of each group in the drawing")
           (princ "\n  DT-SHEETS   (SHT)          number the layout tabs in tab order")
           (princ "\n  DT-NOLW     (NOLWPLOT)     plot every layout without lineweights")
@@ -105,7 +123,9 @@
           (princ "\n  DT-RENCIRCUIT              rename circuits, one or from a CSV")
           (princ "\n  DT-RENPANEL                rename a panel everywhere")
           (princ "\n  DT-FIXATTS                 add missing attributes to a block")
-          (princ "\n  DT-LOAD     (LD)           load per panel and circuit, to CSV"))
+          (princ "\n  DT-LOAD     (LD)           load per panel and circuit, to CSV")
+          (princ "\n  DT-PANELS   (PNL)          list panels, write the CSV template")
+          (princ "\n  DT-SETPANEL (SPN)          fill panel kVA from that CSV"))
         (princ "\nDrafting tools: loaded with errors -- see above."))
       ok))
 )

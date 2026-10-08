@@ -26,11 +26,20 @@ definition, and every config key is both defined and used.
 **The wiring module is fully verified.** That was the project's largest
 technical risk and it is now closed.
 
-Untested: `DT-FIXCEN`, `DT-FIXDIV`, `DT-SETBLOCK` — the placement side — and
+Untested: `DT-TAG` (new, below), `DT-FIXCEN`, `DT-FIXDIV`, `DT-SETBLOCK` —
+the placement side — and
 `DT-SHEETS`. The layout-name parsing in `DT-SHEETS` is verified against ten
 cases, but its COM side (`vla-get-TabOrder`, `vla-put-Name`, the two-pass
 rename) has only been reasoned about. Try it on a copy of a drawing first.
 `DT-NOLW` is also untested in AutoCAD.
+
+Also untested in AutoCAD: **`DT-PANELS` and `DT-SETPANEL`** (`dt-panel.lsp`,
+added for the La Colonial one-line). Statically verified only — parens balance,
+every top-level form closes on itself, no undefined `dt:`/`pn:` call, and the
+three config globals it reads are declared. The CSV split and the header/row
+zip were transliterated to Python and run against eight cases including quoted
+commas, doubled quotes, empty cells and short rows. None of that proves the COM
+side (`vla-put-textstring` over the write plan). Run it on a copy first.
 
 ```
 dt-load.lsp        Startup Suite entry point; sets *dt:root*
@@ -120,6 +129,113 @@ four cardinal points off its bounding box, turned with the block.
 2. Check Esc mid-command leaves OSNAP and the undo stack intact, and that one
    `U` undoes one whole command.
 
+## Latest change: DT-TAG builds COUNT_TAG
+
+`COUNT_TAG` used to have to come from the office template or an old drawing.
+`DT-TAG` (`TG`) now builds it when the drawing has none: `lbl:make-block` in
+[dt-label.lsp](src/dt-label.lsp) entmakes a BLOCK/ATTDEF/ATTDEF/ENDBLK
+run — layer `0` so the insert's layer governs, `NUMBER` centred and visible,
+`GROUP` invisible, both **preset** (flag 8) so insertion never prompts for
+either. `NUMBER` defaults to the padded start number from `*dt:lbl:format*`,
+so a fresh tag reads `01` instead of inserting blank.
+
+No circle and no frame: the first version drew a bubble and it was unwanted.
+Height is `*dt:lbl:tag-height*`, nil meaning the drawing's own `TEXTSIZE`
+(`DIMTXT` when the text style has a fixed height), which removed the last
+hardcoded drawing-units guess from this module.
+
+`lbl:ensure-block` takes the same contract as `dt:ensure-layer`: build if
+missing, never touch what is there. An existing `COUNT_TAG` wins whatever it
+looks like, so the template stays the source of truth. It is called from
+`lbl:collect`, the one place `DT-TAG`, `SG`, `RNB` and `DT-COUNTS` all route
+through.
+
+**Statically verified only** — parens balance across all nine files, every
+namespaced call resolves, `*dt:lbl:tag-height*` is defined in config and read
+in code. The entmake DXF for the ATTDEFs (72/74 justification needing group 11,
+flag 70 = 8 preset and 9 invisible+preset, BLOCK flag 70 = 2) has been reasoned
+about, not run. **Try `TG` in AutoCAD on a scratch drawing first** and check the
+tag looks right before trusting it on a job.
+
+## Per-group prefixes, set from AutoCAD
+
+`*dt:lbl:format*` stays the shared `(prefix suffix start pad)` in
+[dt-config.lsp](dt-config.lsp), with `%G` expanding to the group.
+`*dt:lbl:prefix-overrides*` is an alist letting one group diverge:
+`(("TUG" . "T-"))` makes `TUG` number as `T-01` while every unlisted group is
+untouched.
+
+**It is set by `DT-SETPREFIX` (`SPX`), not by hand.** The first cut of this put
+the alist in `dt-config.lsp`, which broke the rule at the bottom of this file --
+hand-written config is never rewritten by code. Per-group prefixes are a
+drafter-facing setting, so they follow the `dt-blocks.lsp` pattern instead:
+
+- `lbl:save-prefixes` writes **`dt-labels.lsp`**, a generated file, whole,
+  with the same "DO NOT EDIT / delete it to go back to the config defaults"
+  header `dt:save-blocks` uses.
+- `dt-load.lsp` loads it with `dt:load-optional` after `dt-config.lsp`, so what
+  the drafter recorded wins over the default.
+- `src/dt-label.lsp` binds `*dt:lbl:prefix-overrides*` to `nil` at load time, so
+  the variable is always bound whether or not the generated file exists.
+
+`lbl:prefix-entry` does the lookup and `lbl:prefix-for` wraps it with the
+fallback; the result still passes through `lbl:expand`, so `%G` works inside an
+override. The lookup uses `vl-some` rather than `assoc` on purpose: `lbl:collect`
+upper-cases every `GROUP` it reads, so a plain `assoc` would miss a key recorded
+in lower case and silently fall back.
+
+`lbl:prefix-ok` refuses a prefix containing `"` or `\`, because the string is
+written into a file that is `load`ed at startup -- either character would break
+the load and take every command down, not just the prefix. It uses
+`vl-string-search` rather than `wcmatch`, since a prefix is exactly where
+someone types a `*` or `?` and `wcmatch` would read those as pattern syntax.
+
+Suffix has no per-group override, and the shared prefix is still config-only.
+Neither has been asked for.
+
+## Fixed: RNB reading order
+
+Reported from the field: tags copied one at a time number fine, tags copied as
+part of a multi-object `COPY` come out shuffled. Two separate faults, both in
+the ordering, both reproduced before touching anything.
+
+**1. `*dt:lbl:row-tol*` shipped at `0.0`.** That is an exact Y comparison, so
+two tags a thousandth of a unit apart are different rows and reading order
+collapses into a pure Y sort. A four-tag row drifting 3 mm over 1500 mm
+numbered `C A D B`. This was already on this list as a loose end; it turned out
+to be a live bug, not a nicety.
+
+**2. Raising the tolerance alone would not have fixed it.** Above zero, "same
+row?" is not transitive, and where the X order disagrees with the Y order the
+old comparator *cycles*: A before C, C before B, B before A. Three tags fed to
+`vl-sort` in six input orders produced three different numberings. The old
+comment claimed this only moved a band boundary. It did not -- it made the
+result depend on what the sort happened to compare.
+
+`lbl:band` now assigns a row number in one pass over Y before any sorting, and
+`lbl:sort` orders on (row, X, original index) -- three total orders read in
+turn, so the comparator cannot cycle and no two records ever compare equal.
+`lbl:less` became `lbl:less-columns`, since only `'columns` still uses it.
+
+`DT-SETROW` (`SR`) sets the tolerance with `getdist`, which takes a typed
+number *or two picked points* -- so the answer can be shown rather than known,
+and nobody has to work out the drawing units. It writes `dt-labels.lsp`
+alongside the prefixes, through the renamed `lbl:save-labels`.
+
+### What legacy actually did
+
+`legacy/AutoLabelAttributesV1-4.lsp` was cited as ordering correctly, and it
+does -- because **it does no geometric sorting at all**. It walks the selection
+set backwards (`(ssname sel (setq idx (1- idx)))` from `sslength` down) and
+numbers in that order. Nothing about position enters into it, which is exactly
+why copying never disturbed it.
+
+So legacy is closest to `*dt:lbl:order*` `'database`, not to `'reading`. Note
+the direction differs: legacy walks the selection **backwards**, `'database`
+here walks it forwards. If the office wants the legacy sequence exactly,
+`'database` needs reversing and that has not been done -- nobody has confirmed
+which way round is wanted.
+
 ## Known loose ends
 
 - **`*dt:lbl:row-tol*` is `0.0`**, which means exact-Y matching and no useful
@@ -131,6 +247,12 @@ four cardinal points off its bounding box, turned with the block.
   came from `dt-config.lsp`, which I migrated from the old file: three exact
   cardinals at 0.10645 with the fourth inferred by symmetry. Worth one
   `DT-SETPORT` pass to confirm the inferred stub is real.
+- **The CSV helpers are written twice.** `dt-panel.lsp` carries `pn:split-csv`
+  and `pn:csv-cell`, which are the same code as `ld:split-csv` and
+  `ld:csv-cell` in `dt-load-takeoff.lsp`. They belong in `dt-core.lsp` as
+  `dt:`-prefixed functions, the way the block registry helpers were promoted.
+  Not done yet because `dt-load-takeoff.lsp` is verified working in AutoCAD and
+  this was not the moment to edit it. Do it the next time that file is open.
 - **Not in git.** Once it is, [legacy/](legacy/) can go.
 
 ## Offered but not built
