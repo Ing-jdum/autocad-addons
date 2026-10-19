@@ -77,6 +77,7 @@ Every command has a short alias. Use whichever you like.
 | `DT-SHEETS` | `SHT` | Number the layout tabs in tab order |
 | `DT-PREFIX` | `PFX` | Put text in front of picked texts / mleaders |
 | `DT-NOLW` | `NOLWPLOT` | Plot every layout without lineweights |
+| `DT-VPDEF` | `VPDEF` | Put every layout viewport on Defpoints (no border in the print) |
 
 ---
 

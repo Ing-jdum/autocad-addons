@@ -118,6 +118,7 @@
           (princ "\n  DT-COUNTS                  how many of each group in the drawing")
           (princ "\n  DT-SHEETS   (SHT)          number the layout tabs in tab order")
           (princ "\n  DT-NOLW     (NOLWPLOT)     plot every layout without lineweights")
+          (princ "\n  DT-VPDEF    (VPDEF)        move every layout viewport to Defpoints")
           (princ "\n  DT-PREFIX   (PFX)          put text in front of picked text/mleaders")
           (princ "\n  DT-SETCIRCUIT (SC)         tag devices with panel + circuit")
           (princ "\n  DT-RENCIRCUIT              rename circuits, one or from a CSV")

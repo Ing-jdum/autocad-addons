@@ -4,6 +4,8 @@
 ;;; Commands:  DT-SHEETS     (alias: SHT)
 ;;;            DT-NOLW       turn off "Plot object lineweights" on every
 ;;;                          layout  (alias: NOLWPLOT)
+;;;            DT-VPDEF      move every viewport on every layout to
+;;;                          Defpoints  (alias: VPDEF)
 ;;;
 ;;; Renames every paper space layout to <prefix><number>, left to right along
 ;;; the tabs, so reordering the tabs and re-running renumbers the set. The Model
@@ -181,5 +183,44 @@
 )
 
 (defun c:NOLWPLOT () (c:DT-NOLW))
+
+;;; --- Viewports -------------------------------------------------------------
+;;; Moves every viewport on every paper space layout to Defpoints, which never
+;;; plots, so viewport borders disappear from the prints. A viewport sitting
+;;; on a locked layer cannot be changed; it is skipped and counted.
+
+(defun c:DT-VPDEF ( / *error* doc lays n locked)
+
+  (defun *error* (msg)
+    (dt:undo-end doc)
+    (dt:report-error msg)
+  )
+
+  (setq lays (sh:layouts))
+  (cond
+    ((null lays) (princ "\nThis drawing has no layouts."))
+    (t
+     (setq doc (dt:undo-begin)
+           n 0
+           locked 0)
+     (dt:ensure-layer "Defpoints" 7)
+     (foreach lay lays
+       (vlax-for obj (vla-get-Block lay)
+         (if (and (= (vla-get-ObjectName obj) "AcDbViewport")
+                  (/= (strcase (vla-get-Layer obj)) "DEFPOINTS"))
+           (if (vl-catch-all-error-p
+                 (vl-catch-all-apply 'vla-put-Layer (list obj "Defpoints")))
+             (setq locked (1+ locked))
+             (setq n (1+ n))))))
+     (setq doc (dt:undo-end doc))
+     (princ (strcat "\n" (itoa n) " viewport(s) moved to Defpoints across "
+                    (itoa (length lays)) " layout(s)."))
+     (if (> locked 0)
+       (princ (strcat "\n" (itoa locked)
+                      " skipped: on a locked layer. Unlock and run again.")))))
+  (princ)
+)
+
+(defun c:VPDEF () (c:DT-VPDEF))
 
 (princ)
