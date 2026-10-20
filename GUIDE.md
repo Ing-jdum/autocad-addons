@@ -76,6 +76,7 @@ Every command has a short alias. Use whichever you like.
 | `DT-LOAD` | `LD` | Load per circuit, to CSV |
 | `DT-SHEETS` | `SHT` | Number the layout tabs in tab order |
 | `DT-PREFIX` | `PFX` | Put text in front of picked texts / mleaders |
+| `DT-BYLAYER` | `BYL` | Texts / mleaders to colour ByLayer, inline colour too |
 | `DT-NOLW` | `NOLWPLOT` | Plot every layout without lineweights |
 | `DT-VPDEF` | `VPDEF` | Put every layout viewport on Defpoints (no border in the print) |
 

@@ -59,6 +59,7 @@ If the folder is ever moved, update `*dt:fallback-root*` at the top of
 | `DT-SETPANEL` | `SPN` | Fills panel attributes from that CSV. Column 1 is the panel name; every other column is written to the attribute its header names. An empty cell leaves the attribute alone. |
 | `DT-SHEETS` | `SHT` | Renames the layout tabs to `<prefix><number>` in tab order, keeping any descriptive text. |
 | `DT-PREFIX` | `PFX` | Puts the same text in front of every picked text or multileader. |
+| `DT-BYLAYER` | `BYL` | Sets picked texts and multileaders to colour ByLayer, and strips the colour painted inside the MTEXT editor, which `SETBYLAYER` leaves. |
 | `DT-NOLW` | `NOLWPLOT` | Turns off "Plot object lineweights" in the page setup of every layout. |
 | `DT-VPDEF` | `VPDEF` | Moves every viewport on every layout to layer Defpoints so its border never plots. Viewports on locked layers are skipped and counted. |
 
@@ -80,7 +81,7 @@ addons/
     dt-label.lsp       <- DT-SETGROUP, DT-RENUMBER, DT-COUNTS
     dt-dim.lsp         <- DT-FIXDIM
     dt-sheet.lsp       <- DT-SHEETS, DT-NOLW, DT-VPDEF
-    dt-text.lsp        <- DT-PREFIX
+    dt-text.lsp        <- DT-PREFIX, DT-BYLAYER
     dt-load-takeoff.lsp<- DT-SETCIRCUIT, DT-RENCIRCUIT, DT-LOAD
     dt-panel.lsp       <- DT-PANELS, DT-SETPANEL
   legacy/                 <- the pre-restructure originals, kept for reference

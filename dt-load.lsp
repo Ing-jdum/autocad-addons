@@ -120,6 +120,7 @@
           (princ "\n  DT-NOLW     (NOLWPLOT)     plot every layout without lineweights")
           (princ "\n  DT-VPDEF    (VPDEF)        move every layout viewport to Defpoints")
           (princ "\n  DT-PREFIX   (PFX)          put text in front of picked text/mleaders")
+          (princ "\n  DT-BYLAYER  (BYL)          texts/mleaders to ByLayer, inline colour too")
           (princ "\n  DT-SETCIRCUIT (SC)         tag devices with panel + circuit")
           (princ "\n  DT-RENCIRCUIT              rename circuits, one or from a CSV")
           (princ "\n  DT-RENPANEL                rename a panel everywhere")
