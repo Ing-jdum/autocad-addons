@@ -78,6 +78,7 @@ Every command has a short alias. Use whichever you like.
 | `DT-PREFIX` | `PFX` | Put text in front of picked texts / mleaders |
 | `DT-NOLW` | `NOLWPLOT` | Plot every layout without lineweights |
 | `DT-VPDEF` | `VPDEF` | Put every layout viewport on Defpoints (no border in the print) |
+| `DT-PAGECOPY` | `PGC` | Copy one layout's page setup (printer, paper, plot style, scale) to every other layout |
 
 ---
 

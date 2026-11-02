@@ -6,6 +6,8 @@
 ;;;                          layout  (alias: NOLWPLOT)
 ;;;            DT-VPDEF      move every viewport on every layout to
 ;;;                          Defpoints  (alias: VPDEF)
+;;;            DT-PAGECOPY   copy one layout's page setup to every other
+;;;                          layout  (alias: PGC)
 ;;;
 ;;; Renames every paper space layout to <prefix><number>, left to right along
 ;;; the tabs, so reordering the tabs and re-running renumbers the set. The Model
@@ -222,5 +224,61 @@
 )
 
 (defun c:VPDEF () (c:DT-VPDEF))
+
+;;; --- Page setup ------------------------------------------------------------
+;;; Copies one layout's page setup (printer, paper size, plot style table,
+;;; scale, orientation, offset, plot options) onto every other paper space
+;;; layout. The source defaults to the current tab; any layout name can be
+;;; typed instead. Model is never a source or a target.
+
+(defun sh:find-layout (name lays)
+  (vl-some '(lambda (l) (if (= (strcase (vla-get-Name l)) (strcase name)) l))
+           lays)
+)
+
+(defun c:DT-PAGECOPY ( / *error* doc lays cur ans src name n failed)
+
+  (defun *error* (msg)
+    (dt:undo-end doc)
+    (dt:report-error msg)
+  )
+
+  (setq lays (sh:layouts)
+        cur  (if (/= (strcase (getvar "CTAB")) "MODEL") (getvar "CTAB")))
+  (cond
+    ((< (length lays) 2) (princ "\nNeeds at least two layouts."))
+    (t
+     (setq ans (getstring t (if cur
+                              (strcat "\nCopy page setup from layout <" cur ">: ")
+                              "\nCopy page setup from layout: "))
+           src (sh:find-layout (if (and cur (= ans "")) cur ans) lays))
+     (cond
+       ((null src) (princ "\nNo layout by that name."))
+       (t
+        (setq doc    (dt:undo-begin)
+              n      0
+              failed 0)
+        (foreach lay lays
+          (if (not (equal lay src))
+            (progn
+              ;; CopyFrom can carry the source's name over in some releases,
+              ;; so the target's own name is put back after the copy.
+              (setq name (vla-get-Name lay))
+              (if (vl-catch-all-error-p
+                    (vl-catch-all-apply 'vla-CopyFrom (list lay src)))
+                (setq failed (1+ failed))
+                (setq n (1+ n)))
+              (if (/= (vla-get-Name lay) name)
+                (vl-catch-all-apply 'vla-put-Name (list lay name))))))
+        (vla-Regen doc acAllViewports)
+        (setq doc (dt:undo-end doc))
+        (princ (strcat "\nPage setup of \"" (vla-get-Name src) "\" copied to "
+                       (itoa n) " layout(s)."))
+        (if (> failed 0)
+          (princ (strcat "\n" (itoa failed) " layout(s) could not be changed.")))))))
+  (princ)
+)
+
+(defun c:PGC () (c:DT-PAGECOPY))
 
 (princ)
